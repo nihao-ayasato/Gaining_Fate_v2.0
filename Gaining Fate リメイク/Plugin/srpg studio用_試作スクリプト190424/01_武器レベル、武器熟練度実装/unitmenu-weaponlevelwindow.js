@@ -172,6 +172,8 @@ var UnitMenuBottomSecondWindow = defineObject(BaseMenuBottomWindow,
 					ParamValue = unit.getClass().custom.thunder || 0;
 				} else if(ParamName === '氷') {
 					ParamValue = unit.getClass().custom.ice || 0;
+				} else if(ParamName === '光') {
+					ParamValue = unit.getClass().custom.light || 0;
 				}
 				
 				// 熟練度の値に応じて、表示する文字を設定

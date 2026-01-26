@@ -53,6 +53,7 @@ ItemControl.getClassBonus = function(weaponType, unit){
 		case 6 : bonus = unit.getClass().custom.fire; break;
 		case 7 : bonus = unit.getClass().custom.thunder; break;
 		case 8 : bonus = unit.getClass().custom.ice; break;
+		case 9 : bonus = unit.getClass().custom.light; break;
 		default : bonus = 0 ; break;
 	}
 	
@@ -77,6 +78,7 @@ ItemControl.getItemBonus = function(weaponType, item){
 		case 6  : bonus = 0; break; // 炎武器はアイテムボーナスなし
 		case 7  : bonus = 0; break; // 雷武器はアイテムボーナスなし
 		case 8  : bonus = 0; break; // 氷武器はアイテムボーナスなし
+		case 9  : bonus = 0; break; // 光武器はアイテムボーナスなし
 		default : bonus = 0 ; break;
 	}
 	
@@ -101,6 +103,7 @@ ItemControl.getUnitBonus = function(weaponType, unit){
 		case 6  : bonus = 0; break; // 炎武器はユニットボーナスなし
 		case 7  : bonus = 0; break; // 雷武器はユニットボーナスなし
 		case 8  : bonus = 0; break; // 氷武器はユニットボーナスなし
+		case 9  : bonus = 0; break; // 光武器はユニットボーナスなし
 		default : bonus = 1 ; break;
 	}
 	
@@ -124,6 +127,7 @@ NormalAttackOrderBuilder._addWeaponExp = function(unit, wexp, wtype){
 		case 6  : UnitParameter.FIRE.setUnitValue(unit, wexp + UnitParameter.FIRE.getUnitValue(unit)); break;
 		case 7  : UnitParameter.THUNDER.setUnitValue(unit, wexp + UnitParameter.THUNDER.getUnitValue(unit)); break;
 		case 8  : UnitParameter.ICE.setUnitValue(unit, wexp + UnitParameter.ICE.getUnitValue(unit)); break;
+		case 9  : UnitParameter.LIGHT.setUnitValue(unit, wexp + UnitParameter.LIGHT.getUnitValue(unit)); break;
 		default : break;
 	}
 	return true;
@@ -145,6 +149,7 @@ AbilityCalculator.getJyukurendoMax = function(weaponType, unit) {
 		case 6  : maxValue =UnitParameter.FIRE.getMaxValue(unit); break;
 		case 7  : maxValue =UnitParameter.THUNDER.getMaxValue(unit); break;
 		case 8  : maxValue =UnitParameter.ICE.getMaxValue(unit); break;
+		case 9  : maxValue =UnitParameter.LIGHT.getMaxValue(unit); break;
 		default : break;
 	}
 	return maxValue;
@@ -214,11 +219,16 @@ AbilityCalculator.getJyukurendo = function(unit, weapon) {
 		var iceValue = unit.getClass().custom.ice || 0;
 		// 0:C, 1:B, 2:A, 3:S に変換
 		totalValue = iceValue + 1;
+	} else if (weaponType === 9) {
+		// 光武器の場合
+		var lightValue = unit.getClass().custom.light || 0;
+		// 0:C, 1:B, 2:A, 3:S に変換（+1しない）
+		totalValue = lightValue;
 	}
 	
 	
 	// すべての武器タイプでクラスのカスタムパラメータのみを使用する場合
-	if (weaponType === 0 || weaponType === 1 || weaponType === 2 || weaponType === 3 || weaponType === 4 || weaponType === 5 || weaponType === 6 || weaponType === 7 || weaponType === 8) {
+	if (weaponType === 0 || weaponType === 1 || weaponType === 2 || weaponType === 3 || weaponType === 4 || weaponType === 5 || weaponType === 6 || weaponType === 7 || weaponType === 8 || weaponType === 9) {
 		return totalValue;
 	}
 	

@@ -1042,6 +1042,112 @@ UnitParameter.ICE = defineObject(BaseUnitParameter,
 }
 );
 
+// 光熟練度の作成
+// 既存の数値と一致しない値に設定
+ParamType.LIGHT = 9009;
+
+UnitParameter.LIGHT = defineObject(BaseUnitParameter,
+{
+	getParameterType: function() {
+		return ParamType.LIGHT;
+	},
+	
+	isParameterDisplayable: function(unitStatusType) {
+		return false;
+	},
+	
+	getUnitValue: function(unit) {
+		var light;
+		
+		// 光武器の場合は直接クラスのlight値を取得
+		if (typeof unit.getClass().custom.light === 'number') {
+			light = unit.getClass().custom.light;
+		} else {
+			light = 0; // 設定なし：装備できない
+		}
+		
+		return light;
+	},
+	
+	setUnitValue: function(unit, value) {
+		unit.custom.light = value;
+	},
+	
+	getParameterBonus: function(obj) {
+		// 光武器の場合はクラスのlight値を直接使用
+		if (typeof obj.custom.light === 'number') {
+			return obj.custom.light;
+		}
+		return 0;
+	},
+	
+	getGrowthBonus: function(obj) {
+		var light;
+		
+		if (typeof obj.custom.lightGrowthBonus === 'number') {
+			light = obj.custom.lightGrowthBonus;
+		}
+		else {
+			light = 0;
+		}
+		
+		return light;
+	},
+	
+	getDopingParameter: function(obj) {
+		var light;
+		
+		if (typeof obj.custom !== 'object') {
+			return 0;
+		}
+		
+		if (typeof obj.custom.lightDoping === 'number') {
+			light = obj.custom.lightDoping;
+		}
+		else {
+			light = 0;
+		}
+		
+		return light;
+	},
+	
+	getAssistValue: function(obj) {
+		return 0;
+	},
+	
+	getMaxValue: function(unit) {
+		var lightMax;
+		
+		if (DataConfig.isClassLimitEnabled()) {
+			if (typeof unit.getClass().custom.lightMax === 'number') {
+				lightMax = unit.getClass().custom.lightMax;
+			}
+			else {
+				lightMax = 251;
+			}
+		}
+		else {
+			if (typeof root.getMetaSession().global.lightMax === 'number') {
+				lightMax = root.getMetaSession().global.lightMax;
+			}
+			else {
+				lightMax = 251;
+			}
+		}
+		
+		return lightMax;
+	},
+	
+	getMinValue: function(unit) {
+		return 0;
+	},
+	
+	getParameterName: function() {
+		return '光';
+	}
+}
+);
+
 //作成した熟練度をユニットパラメータに追加
 var alias1 = ParamGroup._configureUnitParameters;
 ParamGroup._configureUnitParameters = function(groupArray) {
@@ -1055,6 +1161,7 @@ ParamGroup._configureUnitParameters = function(groupArray) {
 	groupArray.appendObject(UnitParameter.FIRE);
 	groupArray.appendObject(UnitParameter.THUNDER);
 	groupArray.appendObject(UnitParameter.ICE);
+	groupArray.appendObject(UnitParameter.LIGHT);
 };
 
 })();
