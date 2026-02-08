@@ -59,7 +59,7 @@ var PrayWord_1 = 'Pray';
 		// ユニットが祈りを持っている場合　
 		if( SkillControl.getPossessionCustomSkill(unit, PrayWord_1) != null ) {
 			if(unit.getHp() < 11)
-			avoid += 10*(11 - unit.getHp() );
+			avoid += 5*(11 - unit.getHp() );
 		}		
 		// パラメータが 0以下なら 0にする
 		if(avoid < 0){
