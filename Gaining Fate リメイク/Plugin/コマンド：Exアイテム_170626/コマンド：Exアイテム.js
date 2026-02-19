@@ -88,7 +88,7 @@ var ExItemUseCount      = 1;				// １マップにおけるExアイテムコマ�
 
 var ExItemSkillKeyWord  = 'Ex-Item';		// Exアイテムコマンドの使用回数を変えたカスタムスキルのキーワード
 
-var EXITEMCOMMAND_INDEX = 14;				// Exアイテムコマンドの登録位置（上からn番目）
+var EXITEMCOMMAND_INDEX = 2;				// Exアイテムコマンドの登録位置（上からn番目）
 
 var ItemInfoExItemText  = '(奥義)';		// アイテム情報でExアイテムの場合に表示されるテキスト
 

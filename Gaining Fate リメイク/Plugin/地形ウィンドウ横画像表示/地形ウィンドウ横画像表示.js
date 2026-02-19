@@ -32,19 +32,33 @@
 //-------------------------------------------------------
 // 設定（ここを編集）
 //-------------------------------------------------------
-var UseMaterialFolder     = true;   // true=Materialフォルダ指定, false=UI名指定
-var MaterialFolder        = 'zokusei';   // Material内のフォルダ名
-var MaterialFileName      = 'zokusei_info_white.png'; // 画像ファイル名（.png まで書く）
-
-var TerrainSideImage_UIName   = 'snapshot_11';  // UI指定時のみ使用
+// 【スイッチOFF（false）の時の設定】
+var UseMaterialFolder_False     = true;   // true=Materialフォルダ指定, false=UI名指定
+var MaterialFolder_False        = 'zokusei';   // Material内のフォルダ名
+var MaterialFileName_False      = 'buki_info_white.png'; // 画像ファイル名（.png まで書く）
+var TerrainSideImage_UIName_False   = 'snapshot_11';  // UI指定時のみ使用
 // 地形ウィンドウが「右上」のときのオフセット
-var TerrainSideImage_OffsetX_Top    = 50;
-var TerrainSideImage_OffsetY_Top   = 80;
+var TerrainSideImage_OffsetX_Top_False    = -20;
+var TerrainSideImage_OffsetY_Top_False   = 80;
 // 地形ウィンドウが「右下」のときのオフセット
-var TerrainSideImage_OffsetX_Bottom = 50;
-var TerrainSideImage_OffsetY_Bottom = -80;
-var TerrainSideImage_DrawWidth  = 80;    // 0=画像の実サイズ
-var TerrainSideImage_DrawHeight = 78;
+var TerrainSideImage_OffsetX_Bottom_False = -20;
+var TerrainSideImage_OffsetY_Bottom_False = -80;
+var TerrainSideImage_DrawWidth_False  = 180;    // 0=画像の実サイズ
+var TerrainSideImage_DrawHeight_False = 70;
+
+// 【スイッチON（true）の時の設定】
+var UseMaterialFolder_True     = true;   // true=Materialフォルダ指定, false=UI名指定
+var MaterialFolder_True        = 'zokusei';   // Material内のフォルダ名
+var MaterialFileName_True      = 'all_info_white.png'; // 画像ファイル名（.png まで書く）
+var TerrainSideImage_UIName_True   = 'snapshot_11';  // UI指定時のみ使用
+// 地形ウィンドウが「右上」のときのオフセット
+var TerrainSideImage_OffsetX_Top_True    = -20;
+var TerrainSideImage_OffsetY_Top_True   = 77;
+// 地形ウィンドウが「右下」のときのオフセット
+var TerrainSideImage_OffsetX_Bottom_True = -20;
+var TerrainSideImage_OffsetY_Bottom_True = -84;
+var TerrainSideImage_DrawWidth_True  = 180;    // 0=画像の実サイズ
+var TerrainSideImage_DrawHeight_True = 144;
 
 // グローバルスイッチ: このスイッチがONのときだけ画像を表示。 -1＝常に表示（スイッチ無視）
 var TerrainSideImage_GlobalSwitchId = 7;  // 0=1番目のグローバルスイッチ、1=2番目…
@@ -128,18 +142,38 @@ function getTerrainSideImageSwitchInfo() {
 //-------------------------------------------------------
 // 地形横画像用 MapParts
 //-------------------------------------------------------
+// スイッチの状態に応じた設定を取得
+function getTerrainSideImageSettings() {
+	var switchInfo = getTerrainSideImageSwitchInfo();
+	var isOn = switchInfo.enabled;
+	
+	return {
+		useMaterialFolder: isOn ? UseMaterialFolder_True : UseMaterialFolder_False,
+		materialFolder: isOn ? MaterialFolder_True : MaterialFolder_False,
+		materialFileName: isOn ? MaterialFileName_True : MaterialFileName_False,
+		uiName: isOn ? TerrainSideImage_UIName_True : TerrainSideImage_UIName_False,
+		offsetX_Top: isOn ? TerrainSideImage_OffsetX_Top_True : TerrainSideImage_OffsetX_Top_False,
+		offsetY_Top: isOn ? TerrainSideImage_OffsetY_Top_True : TerrainSideImage_OffsetY_Top_False,
+		offsetX_Bottom: isOn ? TerrainSideImage_OffsetX_Bottom_True : TerrainSideImage_OffsetX_Bottom_False,
+		offsetY_Bottom: isOn ? TerrainSideImage_OffsetY_Bottom_True : TerrainSideImage_OffsetY_Bottom_False,
+		drawWidth: isOn ? TerrainSideImage_DrawWidth_True : TerrainSideImage_DrawWidth_False,
+		drawHeight: isOn ? TerrainSideImage_DrawHeight_True : TerrainSideImage_DrawHeight_False
+	};
+}
+
 function getTerrainSideImage() {
+	var settings = getTerrainSideImageSettings();
 	var pic;
-	if (UseMaterialFolder) {
-		pic = root.getMaterialManager().createImage(MaterialFolder, MaterialFileName);
+	if (settings.useMaterialFolder) {
+		pic = root.getMaterialManager().createImage(settings.materialFolder, settings.materialFileName);
 		if (TerrainSideImage_DebugLog && TerrainSideImage_LogCount < TerrainSideImage_LogLimit) {
-			root.log('地形横画像: Material取得 ' + MaterialFolder + '/' + MaterialFileName + ' => ' + (pic ? 'OK' : 'null'));
+			root.log('地形横画像: Material取得 ' + settings.materialFolder + '/' + settings.materialFileName + ' => ' + (pic ? 'OK' : 'null'));
 		}
 		return pic;
 	}
-	pic = root.queryUI(TerrainSideImage_UIName);
+	pic = root.queryUI(settings.uiName);
 	if (TerrainSideImage_DebugLog && TerrainSideImage_LogCount < TerrainSideImage_LogLimit) {
-		root.log('地形横画像: UI取得 ' + TerrainSideImage_UIName + ' => ' + (pic ? 'OK' : 'null'));
+		root.log('地形横画像: UI取得 ' + settings.uiName + ' => ' + (pic ? 'OK' : 'null'));
 	}
 	return pic;
 }
@@ -147,20 +181,15 @@ function getTerrainSideImage() {
 var TerrainSideImageParts = defineObject(BaseMapParts, {
 	drawMapParts: function() {
 		var switchInfo = getTerrainSideImageSwitchInfo();
-		if (!switchInfo.enabled) {
-			if (TerrainSideImage_DebugLog) {
-				var offLimit = TerrainSideImage_LogSwitchOffLimit;
-				if (offLimit === 0 || TerrainSideImage_LogSwitchOffCount < offLimit) {
-					TerrainSideImage_LogSwitchOffCount++;
-					root.log('地形横画像: グローバルスイッチ 「' + switchInfo.switchName + '」 => OFF');
-				}
-			}
-			return;
-		}
+		// スイッチが無視設定（-1）でない場合、スイッチがOFFの時も表示する（false用の設定で表示）
+		// ただし、スイッチが無視設定（-1）の場合は常に表示
+		var settings = getTerrainSideImageSettings();
+		
 		var doLog = TerrainSideImage_DebugLog && (TerrainSideImage_LogLimit === 0 || TerrainSideImage_LogCount < TerrainSideImage_LogLimit);
 		if (doLog) {
 			TerrainSideImage_LogCount++;
-			root.log('地形横画像: グローバルスイッチ 「' + switchInfo.switchName + '」 => ON');
+			var statusText = switchInfo.enabled ? 'ON' : 'OFF';
+			root.log('地形横画像: グローバルスイッチ 「' + switchInfo.switchName + '」 => ' + statusText);
 			root.log('地形横画像: drawMapParts 呼び出し #' + TerrainSideImage_LogCount);
 		}
 		var pic = getTerrainSideImage();
@@ -170,8 +199,8 @@ var TerrainSideImageParts = defineObject(BaseMapParts, {
 			}
 			return;
 		}
-		var w = TerrainSideImage_DrawWidth;
-		var h = TerrainSideImage_DrawHeight;
+		var w = settings.drawWidth;
+		var h = settings.drawHeight;
 		if (w <= 0 || h <= 0) {
 			if (typeof pic.getWidth === 'function' && typeof pic.getHeight === 'function') {
 				w = pic.getWidth();
@@ -184,14 +213,14 @@ var TerrainSideImageParts = defineObject(BaseMapParts, {
 		var baseX = getTerrainBaseX();
 		var baseY = getTerrainBaseY.call(this, h);
 		var isBottom = isTerrainWindowAtBottom(this);
-		var offsetX = isBottom ? TerrainSideImage_OffsetX_Bottom : TerrainSideImage_OffsetX_Top;
-		var offsetY = isBottom ? TerrainSideImage_OffsetY_Bottom : TerrainSideImage_OffsetY_Top;
+		var offsetX = isBottom ? settings.offsetX_Bottom : settings.offsetX_Top;
+		var offsetY = isBottom ? settings.offsetY_Bottom : settings.offsetY_Top;
 		var x = baseX + offsetX;
 		var y = baseY + offsetY;
 		if (doLog) {
 			root.log('地形横画像: 描画 ' + (isBottom ? '右下' : '右上') + ' 座標(' + x + ',' + y + ') サイズ(' + w + 'x' + h + ')');
 		}
-		if (TerrainSideImage_DrawWidth > 0 && TerrainSideImage_DrawHeight > 0) {
+		if (settings.drawWidth > 0 && settings.drawHeight > 0) {
 			var srcW = (typeof pic.getWidth === 'function') ? pic.getWidth() : w;
 			var srcH = (typeof pic.getHeight === 'function') ? pic.getHeight() : h;
 			pic.drawStretchParts(x, y, w, h, 0, 0, srcW, srcH);
@@ -213,7 +242,8 @@ MapPartsCollection._configureMapParts = function(groupArray) {
 	_MapPartsCollection_configureMapParts.call(this, groupArray);
 	groupArray.appendObject(TerrainSideImageParts);
 	if (TerrainSideImage_DebugLog) {
-		root.log('地形横画像: プラグイン登録済み (UseMaterialFolder=' + UseMaterialFolder + ')');
+		var settings = getTerrainSideImageSettings();
+		root.log('地形横画像: プラグイン登録済み (UseMaterialFolder_OFF=' + UseMaterialFolder_False + ', UseMaterialFolder_ON=' + UseMaterialFolder_True + ')');
 	}
 };
 
