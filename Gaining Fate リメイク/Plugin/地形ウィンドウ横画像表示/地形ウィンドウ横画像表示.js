@@ -23,8 +23,9 @@
   - 地形ウィンドウが「右上」のとき: OffsetX_Top, OffsetY_Top
   - 地形ウィンドウが「右下」のとき: OffsetX_Bottom, OffsetY_Bottom
   - DrawWidth/DrawHeight: 表示サイズ
-  - グローバルスイッチ: TerrainSideImage_GlobalSwitchId で指定したスイッチがONのときだけ表示
-    （-1 でスイッチ無視＝常に表示。0＝1番目、1＝2番目…）
+  - グローバルスイッチ: OFF時は _False 設定、ON時は _True 設定で画像を差し替え
+  - TerrainSideImage_GlobalSwitchName に名前を書くとIDを自動検索（空なら ID を使用）
+  - TerrainSideImage_GlobalSwitchId: 0＝1番目のグローバルスイッチ、1＝2番目…
 
 --------------------------------------------------------------------------*/
 (function() {
@@ -60,8 +61,11 @@ var TerrainSideImage_OffsetY_Bottom_True = -84;
 var TerrainSideImage_DrawWidth_True  = 180;    // 0=画像の実サイズ
 var TerrainSideImage_DrawHeight_True = 144;
 
-// グローバルスイッチ: このスイッチがONのときだけ画像を表示。 -1＝常に表示（スイッチ無視）
-var TerrainSideImage_GlobalSwitchId = 7;  // 0=1番目のグローバルスイッチ、1=2番目…
+// グローバルスイッチ: OFF時=_False設定、ON時=_True設定で画像を差し替え
+// 名前を指定すると起動時にIDを自動検索（見つからなければ下のIDを使用）
+var TerrainSideImage_GlobalSwitchName = '属性すくみ表示';
+var TerrainSideImage_GlobalSwitchId = 11;  // 0=1番目のグローバルスイッチ、1=2番目…
+var TerrainSideImage_ResolvedSwitchId = -1;  // 名前検索の結果（内部用）
 
 // デバッグ: true にすると root.log でコンソールに出力（確認後は false に）
 var TerrainSideImage_DebugLog = true;
@@ -101,21 +105,46 @@ function isTerrainWindowAtBottom(parts) {
 	return (x > dx && y < dy);
 }
 
-// グローバルスイッチがONなら true（TerrainSideImage_GlobalSwitchId が -1 のときは常に true）
+// グローバルスイッチがONなら true
 function isTerrainSideImageEnabled() {
 	var info = getTerrainSideImageSwitchInfo();
-	return info.enabled;
+	return info.isOn;
 }
 
-// スイッチの状態と名前を取得（ログ用）。{ enabled, switchName, isOn }
-function getTerrainSideImageSwitchInfo() {
-	var result = { enabled: false, switchName: '', isOn: false };
-	if (TerrainSideImage_GlobalSwitchId < 0) {
-		result.enabled = true;
-		result.switchName = '(スイッチ無視)';
-		result.isOn = true;
-		return result;
+// スイッチ名からIDを検索（見つからなければ -1）
+function findTerrainSideImageSwitchIdByName(switchTable, switchName) {
+	if (switchName === undefined || switchName === null || switchName === '') {
+		return -1;
 	}
+	var count = switchTable.getSwitchCount();
+	var i;
+	for (i = 0; i < count; i++) {
+		if (switchTable.getSwitchName(i) === switchName) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+// 使用するスイッチIDを解決（名前優先、なければ手動ID）
+function resolveTerrainSideImageSwitchId(switchTable) {
+	if (TerrainSideImage_ResolvedSwitchId >= 0) {
+		return TerrainSideImage_ResolvedSwitchId;
+	}
+	if (switchTable !== null && TerrainSideImage_GlobalSwitchName !== '') {
+		var foundId = findTerrainSideImageSwitchIdByName(switchTable, TerrainSideImage_GlobalSwitchName);
+		if (foundId >= 0) {
+			TerrainSideImage_ResolvedSwitchId = foundId;
+			return foundId;
+		}
+	}
+	TerrainSideImage_ResolvedSwitchId = TerrainSideImage_GlobalSwitchId;
+	return TerrainSideImage_GlobalSwitchId;
+}
+
+// スイッチの状態と名前を取得（ログ用）。{ switchId, switchName, isOn }
+function getTerrainSideImageSwitchInfo() {
+	var result = { switchId: -1, switchName: '', isOn: false };
 	var session = root.getMetaSession();
 	if (session === null) {
 		result.switchName = '(セッションなし)';
@@ -126,17 +155,51 @@ function getTerrainSideImageSwitchInfo() {
 		result.switchName = '(テーブルなし)';
 		return result;
 	}
-	if (TerrainSideImage_GlobalSwitchId >= switchTable.getSwitchCount()) {
-		result.switchName = '(ID範囲外)';
+	var switchId = resolveTerrainSideImageSwitchId(switchTable);
+	result.switchId = switchId;
+	if (switchId < 0 || switchId >= switchTable.getSwitchCount()) {
+		result.switchName = '(ID範囲外: ' + switchId + ')';
 		return result;
 	}
-	result.isOn = switchTable.isSwitchOn(TerrainSideImage_GlobalSwitchId);
-	result.enabled = result.isOn;
-	result.switchName = switchTable.getSwitchName(TerrainSideImage_GlobalSwitchId);
+	result.isOn = switchTable.isSwitchOn(switchId);
+	result.switchName = switchTable.getSwitchName(switchId);
 	if (result.switchName === undefined || result.switchName === '') {
-		result.switchName = '(ID:' + TerrainSideImage_GlobalSwitchId + ')';
+		result.switchName = '(ID:' + switchId + ')';
 	}
 	return result;
+}
+
+// デバッグ: グローバルスイッチ一覧を一度だけ出力
+var TerrainSideImage_SwitchListLogged = false;
+function logTerrainSideImageSwitchListOnce() {
+	if (!TerrainSideImage_DebugLog || TerrainSideImage_SwitchListLogged) {
+		return;
+	}
+	var session = root.getMetaSession();
+	if (session === null) {
+		return;
+	}
+	var switchTable = session.getGlobalSwitchTable();
+	if (switchTable === null) {
+		return;
+	}
+	TerrainSideImage_SwitchListLogged = true;
+	var count = switchTable.getSwitchCount();
+	var i;
+	root.log('地形横画像: グローバルスイッチ一覧 (' + count + '個)');
+	for (i = 0; i < count; i++) {
+		root.log('  [' + i + '] ' + switchTable.getSwitchName(i) + ' => ' + (switchTable.isSwitchOn(i) ? 'ON' : 'OFF'));
+	}
+	var switchId = resolveTerrainSideImageSwitchId(switchTable);
+	if (TerrainSideImage_GlobalSwitchName !== '') {
+		var foundId = findTerrainSideImageSwitchIdByName(switchTable, TerrainSideImage_GlobalSwitchName);
+		if (foundId < 0) {
+			root.log('地形横画像: 警告 「' + TerrainSideImage_GlobalSwitchName + '」 が見つかりません。ID=' + TerrainSideImage_GlobalSwitchId + ' を使用します');
+		} else {
+			root.log('地形横画像: 「' + TerrainSideImage_GlobalSwitchName + '」 => ID ' + foundId);
+		}
+	}
+	root.log('地形横画像: 使用中スイッチ ID=' + switchId + ' 「' + switchTable.getSwitchName(switchId) + '」');
 }
 
 //-------------------------------------------------------
@@ -145,7 +208,7 @@ function getTerrainSideImageSwitchInfo() {
 // スイッチの状態に応じた設定を取得
 function getTerrainSideImageSettings() {
 	var switchInfo = getTerrainSideImageSwitchInfo();
-	var isOn = switchInfo.enabled;
+	var isOn = switchInfo.isOn;
 	
 	return {
 		useMaterialFolder: isOn ? UseMaterialFolder_True : UseMaterialFolder_False,
@@ -161,35 +224,67 @@ function getTerrainSideImageSettings() {
 	};
 }
 
-function getTerrainSideImage() {
-	var settings = getTerrainSideImageSettings();
+function loadTerrainSideImageFromSettings(settings, label) {
 	var pic;
 	if (settings.useMaterialFolder) {
 		pic = root.getMaterialManager().createImage(settings.materialFolder, settings.materialFileName);
 		if (TerrainSideImage_DebugLog && TerrainSideImage_LogCount < TerrainSideImage_LogLimit) {
-			root.log('地形横画像: Material取得 ' + settings.materialFolder + '/' + settings.materialFileName + ' => ' + (pic ? 'OK' : 'null'));
+			root.log('地形横画像: Material取得(' + label + ') ' + settings.materialFolder + '/' + settings.materialFileName + ' => ' + (pic ? 'OK' : 'null'));
 		}
 		return pic;
 	}
 	pic = root.queryUI(settings.uiName);
 	if (TerrainSideImage_DebugLog && TerrainSideImage_LogCount < TerrainSideImage_LogLimit) {
-		root.log('地形横画像: UI取得 ' + settings.uiName + ' => ' + (pic ? 'OK' : 'null'));
+		root.log('地形横画像: UI取得(' + label + ') ' + settings.uiName + ' => ' + (pic ? 'OK' : 'null'));
 	}
 	return pic;
 }
 
+function getTerrainSideImageSettingsBySwitch(isOn) {
+	return {
+		useMaterialFolder: isOn ? UseMaterialFolder_True : UseMaterialFolder_False,
+		materialFolder: isOn ? MaterialFolder_True : MaterialFolder_False,
+		materialFileName: isOn ? MaterialFileName_True : MaterialFileName_False,
+		uiName: isOn ? TerrainSideImage_UIName_True : TerrainSideImage_UIName_False,
+		offsetX_Top: isOn ? TerrainSideImage_OffsetX_Top_True : TerrainSideImage_OffsetX_Top_False,
+		offsetY_Top: isOn ? TerrainSideImage_OffsetY_Top_True : TerrainSideImage_OffsetY_Top_False,
+		offsetX_Bottom: isOn ? TerrainSideImage_OffsetX_Bottom_True : TerrainSideImage_OffsetX_Bottom_False,
+		offsetY_Bottom: isOn ? TerrainSideImage_OffsetY_Bottom_True : TerrainSideImage_OffsetY_Bottom_False,
+		drawWidth: isOn ? TerrainSideImage_DrawWidth_True : TerrainSideImage_DrawWidth_False,
+		drawHeight: isOn ? TerrainSideImage_DrawHeight_True : TerrainSideImage_DrawHeight_False
+	};
+}
+
+function getTerrainSideImage() {
+	var switchInfo = getTerrainSideImageSwitchInfo();
+	var settings = getTerrainSideImageSettingsBySwitch(switchInfo.isOn);
+	var label = switchInfo.isOn ? 'ON' : 'OFF';
+	var pic = loadTerrainSideImageFromSettings(settings, label);
+	if (pic !== null) {
+		return pic;
+	}
+	if (switchInfo.isOn) {
+		var fallbackSettings = getTerrainSideImageSettingsBySwitch(false);
+		if (TerrainSideImage_DebugLog && TerrainSideImage_LogCount < TerrainSideImage_LogLimit) {
+			root.log('地形横画像: ON用画像が読み込めないため OFF用画像にフォールバック');
+		}
+		return loadTerrainSideImageFromSettings(fallbackSettings, 'OFF(フォールバック)');
+	}
+	return null;
+}
+
 var TerrainSideImageParts = defineObject(BaseMapParts, {
 	drawMapParts: function() {
+		logTerrainSideImageSwitchListOnce();
 		var switchInfo = getTerrainSideImageSwitchInfo();
-		// スイッチが無視設定（-1）でない場合、スイッチがOFFの時も表示する（false用の設定で表示）
-		// ただし、スイッチが無視設定（-1）の場合は常に表示
 		var settings = getTerrainSideImageSettings();
 		
 		var doLog = TerrainSideImage_DebugLog && (TerrainSideImage_LogLimit === 0 || TerrainSideImage_LogCount < TerrainSideImage_LogLimit);
 		if (doLog) {
 			TerrainSideImage_LogCount++;
-			var statusText = switchInfo.enabled ? 'ON' : 'OFF';
-			root.log('地形横画像: グローバルスイッチ 「' + switchInfo.switchName + '」 => ' + statusText);
+			var statusText = switchInfo.isOn ? 'ON' : 'OFF';
+			root.log('地形横画像: グローバルスイッチ ID=' + switchInfo.switchId + ' 「' + switchInfo.switchName + '」 => ' + statusText);
+			root.log('地形横画像: 使用画像 ' + settings.materialFolder + '/' + settings.materialFileName);
 			root.log('地形横画像: drawMapParts 呼び出し #' + TerrainSideImage_LogCount);
 		}
 		var pic = getTerrainSideImage();
